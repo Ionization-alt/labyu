@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Happy Teachers' Day, Ma'am Danica</title>
+<style>
+:root{--bg1:#1b2a41;--bg2:#0a0e17;--star:#9ec5ff;box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:#0a0e17}
+.night{position:absolute;inset:0;overflow:hidden;background:radial-gradient(ellipse at bottom,var(--bg1) 0%,var(--bg2) 100%)}
+.sky{position:absolute;inset:-25%;transform:rotate(315deg)}
+.shooting_star{position:absolute;height:2px;border-radius:999px;background:linear-gradient(-45deg,var(--star),rgba(0,0,255,0));
+  filter:drop-shadow(0 0 6px var(--star));animation:tail 3s ease-in-out infinite,shooting 3s ease-in-out infinite}
+.shooting_star::before,.shooting_star::after{content:'';position:absolute;top:calc(50% - 1px);right:0;height:2px;
+  background:linear-gradient(-45deg,rgba(0,0,255,0),var(--star),rgba(0,0,255,0));border-radius:100%;
+  transform:translateX(50%) rotate(45deg);animation:shining 3s ease-in-out infinite}
+.shooting_star::after{transform:translateX(50%) rotate(-45deg)}
+@keyframes tail{0%{width:0}30%{width:100px}100%{width:0}}
+@keyframes shining{0%{width:0}50%{width:30px}100%{width:0}}
+@keyframes shooting{0%{transform:translateX(0)}100%{transform:translateX(300px)}}
+canvas{position:absolute;inset:0;z-index:2}
+#hint{position:absolute;z-index:3;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;
+  font:12px/1 Verdana,sans-serif;color:rgba(158,197,255,.55);opacity:0;transition:opacity 1s}
+</style>
+</head>
+<body>
+<div class="night"><div class="sky" id="sky"></div></div>
+<canvas id="c"></canvas>
+<div id="hint">tap to replay</div>
+<script>
+var sky=document.getElementById('sky');
+for(var i=0;i<45;i++){var s=document.createElement('div');s.className='shooting_star';
+  s.style.top=(Math.random()*100)+'%';s.style.left=(Math.random()*100-30)+'%';
+  var d=(Math.random()*8).toFixed(2)+'s',t=(2.5+Math.random()*2).toFixed(2)+'s';
+  s.style.animationDelay=d+','+d;s.style.animationDuration=t+','+t;sky.appendChild(s);}
+
+var cv=document.getElementById('c'),ctx=cv.getContext('2d'),W,H,dpr,gap;
+function resize(){dpr=Math.min(window.devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  gap=Math.max(4,Math.round(Math.min(W,H*0.6)/62));}
+resize();addEventListener('resize',resize);
+
+var off=document.createElement('canvas'),octx=off.getContext('2d');
+var FONT='Verdana, "Trebuchet MS", sans-serif';
+// lines: [{t:text,c:color}]; returns dot positions
+function sample(lines,big){
+  off.width=W;off.height=H;octx.clearRect(0,0,W,H);
+  var size=big?Math.min(W*0.7,H*0.42):Math.min(H*0.1,W*0.2);
+  octx.font='bold '+size+'px '+FONT;
+  var maxw=W*0.86;
+  lines.forEach(function(l){var w=octx.measureText(l.t).width;if(w>maxw)size*=maxw/w;octx.font='bold '+size+'px '+FONT;});
+  size=Math.floor(size);octx.font='bold '+size+'px '+FONT;
+  octx.textAlign='center';octx.textBaseline='middle';
+  var lh=size*1.3,y0=H/2-(lines.length-1)*lh/2,pts=[];
+  lines.forEach(function(l,i){
+    octx.clearRect(0,0,W,H);octx.fillStyle='#fff';octx.fillText(l.t,W/2,y0+i*lh);
+    var d=octx.getImageData(0,0,W,H).data;
+    for(var y=0;y<H;y+=gap)for(var x=0;x<W;x+=gap){
+      if(d[((y|0)*W+(x|0))*4+3]>128)pts.push({x:x,y:y,c:l.c});}
+  });
+  return pts;
+}
+var P=[];
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.random()*(i+1)|0,t=a[i];a[i]=a[j];a[j]=t}return a}
+function form(pts){
+  shuffle(pts);
+  while(P.length<pts.length)P.push({x:Math.random()*W,y:-20,tx:0,ty:0,a:0,ta:0,c:'#f3eccb'});
+  P.forEach(function(p,i){
+    if(i<pts.length){p.tx=pts[i].x;p.ty=pts[i].y;p.c=pts[i].c;p.ta=1;}
+    else{p.tx=p.x+(Math.random()-.5)*60;p.ty=H+30;p.ta=0;}
+  });
+}
+function scatter(){P.forEach(function(p){p.tx=p.x+(Math.random()-.5)*W*0.5;p.ty=p.y+(Math.random()-.3)*H*0.5;p.ta=0.35;});}
+var settled=false;
+function frame(){
+  ctx.clearRect(0,0,W,H);
+  var sz=gap*0.72;
+  for(var i=0;i<P.length;i++){var p=P[i];
+    p.x+=(p.tx-p.x)*0.11;p.y+=(p.ty-p.y)*0.11;p.a+=(p.ta-p.a)*0.1;
+    if(p.a<0.02)continue;
+    var j=settled?(Math.random()-.5)*0.6:0;
+    ctx.globalAlpha=Math.min(1,p.a);ctx.shadowColor=p.c;ctx.shadowBlur=6;ctx.fillStyle=p.c;
+    ctx.fillRect(p.x+j-sz/2,p.y+j-sz/2,sz,sz);}
+  ctx.globalAlpha=1;requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+var CREAM='#f3eccb',GOLD='#ffe08a',run=0;
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+async function play(){
+  var id=++run;settled=false;document.getElementById('hint').style.opacity=0;
+  scatter();await sleep(500);
+  var map_last;var steps=[['Skibidi|toilet'],['3',1],['2',1],['1',1],['Happy'],["Teachers'"],['Day'],["Ma'am"],['Danica']];
+  map_last=steps.length-1;for(var k=0;k<steps.length;k++){
+    if(id!==run)return;
+    var big=steps[k][1];
+    form(sample(steps[k][0].split('|').map(function(w){return {t:w,c:k===map_last?GOLD:CREAM}}),big));
+    await sleep(big?1000:1100);
+    if(id!==run)return;scatter();await sleep(350);
+  }
+  if(id!==run)return;
+  form(sample([{t:'Happy',c:CREAM},{t:"Teachers' Day",c:CREAM},{t:"Ma'am Danica",c:GOLD}],false));
+  settled=true;
+  setTimeout(function(){document.getElementById('hint').style.opacity=1},3000);
+}
+document.body.addEventListener('click',function(){play()});
+play();
+</script>
+</body>
+</html>
